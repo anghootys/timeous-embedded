@@ -1,5 +1,5 @@
-#ifndef LOGGER_H
-#define LOGGER_H
+#ifndef __LOGGER_H__
+#define __LOGGER_H__
 
 #include <stddef.h>
 #include "time_service.h"
@@ -76,4 +76,4 @@ public:
     void error(const char *msg);
 };
 
-#endif // LOGGER_H
+#endif // __LOGGER_H__

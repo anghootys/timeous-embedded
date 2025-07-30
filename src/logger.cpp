@@ -1,5 +1,6 @@
 #include "logger.h"
 #include <Arduino.h>
+#include "core.h"
 
 #include <utility>
 
@@ -11,15 +12,18 @@ Logger::initialize(baud_rate_t _baud_rate) {
 
 void
 Logger::log(LoggerConfig *conf, char identifier, const char *msg) {
-    String time;
+    char *time;
     if (!this->time_provider) {
-        time = "NO TIME";
+        time = alloc<char>(10);
+        snprintf(time, 10, "NO TIME");
     } else {
-        time = String(this->time_provider());
+        time = (char *) this->time_provider();
     }
 
-    Serial.printf("[%s] %c %s : %s\n", time.c_str(), identifier, conf->source, msg);
+    Serial.printf("[%s] %c %s : %s\n", time, identifier, conf->source, msg);
     Serial.flush();
+
+    free(time);
 }
 
 void

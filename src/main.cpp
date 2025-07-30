@@ -1,107 +1,98 @@
-#include "logger.h"
 #include "access_point_wifi.h"
+#include "core.h"
+#include "http_server.h"
+#include "logger.h"
 
-LoggerFacade logger = LoggerFacade(Logger::setup("MAIN"));
 
-TimeService rtc_time;
+LoggerFacade main_logger(Logger::setup("MAIN"));
+
+Time rtc_time;
 
 AccessPoint ap;
+HTTPServer http_server;
+
+void register_http_server_handlers();
+
+void middleware_cb(AsyncWebServerRequest *request, const std::function<void(AsyncWebServerRequest *)> &handler);
+
 
 void
 setup() {
     Logger::instance().initialize();
 
-    logger.info("application starting.");
+    main_logger.info("application starting.");
 
-    logger.info("initializing TimeService.");
+    main_logger.info("initializing Time.");
     rtc_time.initialize();
-    Logger::instance().set_time_provider([]() { return rtc_time.getFullTime(); });
-    logger.success("TimeService initialized successfully.");
+    Logger::instance().set_time_provider([]() { return rtc_time.get_full_time(); });
+    main_logger.success("Time initialized successfully.");
 
-
-    logger.info("initializing AccessPoint service.");
+    main_logger.info("initializing AccessPoint service.");
     ap.initialize();
-    logger.success("AccessPoint service initialized successfully.");
+    main_logger.success("AccessPoint service initialized successfully.");
 
-    EspClass::deepSleep(0);
+    main_logger.info("initializing HTTPServer service.");
+    http_server.initialize();
+    main_logger.success("HTTPServer service initialized successfully.");
+
+    http_server.register_middleware(middleware_cb);
+    register_http_server_handlers();
+
+    http_server.get_server()->begin();
 }
 
 void
 loop() {
-    delay(60 * 1000);
 }
 
-// RTC_DS3231 rtc;
-//
-// Ticker serialISRTicker;
-// volatile bool f_checkSerial = false;
-//
-// char daysOfTheWeek[7][12] = { "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday" };
-//
-// void IRAM_ATTR
-// isr_checkSerial() {
-//     f_checkSerial = true;
-// }
-//
-//[[maybe_unused]] void
-// setup() {
-//     Serial.begin(115200);
-//
-//     if (!rtc.begin()) {
-//         Serial.println("Couldn't find RTC");
-//         Serial.flush();
-//         while (true)
-//             delay(10);
-//     }
-//
-//     if (rtc.lostPower()) {
-//         Serial.println("RTC lost power, let's set the time!");
-//         Serial.println("RTC lost power, let's set the time!");
-//     }
-//
-//     serialISRTicker.attach_ms(200, isr_checkSerial);
-// }
-//
-//[[maybe_unused]] void
-// loop() {
-//     static unsigned long lastPrint = 0;
-//
-//     if (millis() - lastPrint >= 3000) {
-//         lastPrint = millis();
-//         // Get the current time from the RTC
-//         DateTime now = rtc.now();
-//
-//         // Getting each time field in individual variables
-//         // And adding a leading zero when needed;
-//         String yearStr = String(now.year(), DEC);
-//         String monthStr = (now.month() < 10 ? "0" : "") + String(now.month(), DEC);
-//         String dayStr = (now.day() < 10 ? "0" : "") + String(now.day(), DEC);
-//         String hourStr = (now.hour() < 10 ? "0" : "") + String(now.hour(), DEC);
-//         String minuteStr = (now.minute() < 10 ? "0" : "") + String(now.minute(), DEC);
-//         String secondStr = (now.second() < 10 ? "0" : "") + String(now.second(), DEC);
-//         String dayOfWeek = daysOfTheWeek[now.dayOfTheWeek()];
-//
-//         // Complete time string
-//         String formattedTime = dayOfWeek + ", " + yearStr + "-" + monthStr + "-" + dayStr + " " + hourStr + ":"
-//                                + minuteStr + ":" + secondStr;
-//
-//         // Print the complete formatted time
-//         Serial.println(formattedTime);
-//
-//         // Getting temperature
-//         Serial.print(rtc.getTemperature());
-//         Serial.println("ºC");
-//
-//         Serial.println();
-//     }
-//
-//     if (f_checkSerial) {
-//         f_checkSerial = false;
-//
-//         if (Serial.available()) {
-//             String time = Serial.readStringUntil('\n');
-//             Serial.printf("Updating time to %s %s\n", __DATE__, time.c_str());
-//             rtc.adjust(DateTime(__DATE__, time.c_str()));
-//         }
-//     }
-// }
+void
+register_http_server_handlers() {
+    // for testing connection established between server and frontend application
+    http_server.register_handler("/ping", HTTP_OPTIONS, [](AsyncWebServerRequest *request) { request->send(204); });
+
+    // for setting timer
+    http_server.register_handler("/timer", HTTP_PUT, [](AsyncWebServerRequest *request) {
+        main_logger.info("updating timer value.");
+        request->send(204);
+    });
+
+    // testing switch functionality
+    http_server.register_handler("/test_switch", HTTP_POST, [](AsyncWebServerRequest *request) {
+        main_logger.info("testing switch functionality.");
+        request->send(204);
+    });
+
+    // get current RTC time
+    http_server.register_handler("/time", HTTP_GET, [](AsyncWebServerRequest *request) {
+        main_logger.info("sending RTCTime value.");
+
+        char *time = rtc_time.get_full_time();
+
+        size_t buf_len = (strlen(time) + 128) * sizeof(char);
+        char *buf = alloc<char>(buf_len);
+
+        snprintf(buf, buf_len, R"({"time": "%s"})", time);
+
+        request->send(200, "application/json", buf);
+
+        free(buf);
+        free(time);
+    });
+}
+
+void
+middleware_cb(AsyncWebServerRequest *request, const std::function<void(AsyncWebServerRequest *)> &handler) {
+    size_t buf_len = (strlen(request->url().c_str()) + 256) * sizeof(char);
+
+    char *buf = alloc<char>(buf_len);
+    snprintf(buf, buf_len, "Req <- %s '%s'.", request->methodToString(), request->url().c_str());
+    main_logger.info(buf);
+
+    if (request->hasHeader("X-TIME")) {
+        rtc_time.update_time(&request->header("X-TIME"));
+    }
+
+    handler(request);
+
+    free(buf);
+}

@@ -1,31 +1,27 @@
-#ifndef UNTITLED_TIME_SERVICE_H
-#define UNTITLED_TIME_SERVICE_H
+#ifndef __TIME_SERVICE_H__
+#define __TIME_SERVICE_H__
 
 #include <RTClib.h>
 #include "logger.h"
-#include "time_service.h"
 
 #define LOG_TIME_CTX "TIME"
 
-class ITime {
-public:
-    virtual const char *getFullTime() = 0;
-};
-
-class TimeService : public ITime {
+class Time {
     RTC_DS3231 rtc;
 
 public:
     void initialize();
 
-    const char *getFullTime() override;
+    char *get_full_time();
 
-    static TimeService &
+    void update_time(const String *iso8601);
+
+    static Time &
     instance() {
-        static TimeService time;
+        static Time time;
         return time;
     }
 };
 
 
-#endif // UNTITLED_TIME_SERVICE_H
+#endif // __TIME_SERVICE_H__
