@@ -2,11 +2,16 @@
 #include "core.h"
 #include "http_server.h"
 #include "logger.h"
+#include "switch_service.h"
 
+#define SWITCH_DIO_PINOUT 15
 
 LoggerFacade main_logger(Logger::setup("MAIN"));
 
 Time rtc_time;
+
+MOSFETSwitch switch_service(SWITCH_DIO_PINOUT);
+volatile bool attr_switch_test = false;
 
 AccessPoint ap;
 HTTPServer http_server;
@@ -14,7 +19,6 @@ HTTPServer http_server;
 void register_http_server_handlers();
 
 void middleware_cb(AsyncWebServerRequest *request, const std::function<void(AsyncWebServerRequest *)> &handler);
-
 
 void
 setup() {
@@ -26,6 +30,10 @@ setup() {
     rtc_time.initialize();
     Logger::instance().set_time_provider([]() { return rtc_time.get_full_time(); });
     main_logger.success("Time initialized successfully.");
+
+    main_logger.info("initializing Switch service.");
+    switch_service.initialize();
+    main_logger.info("Switch service initialized successfully.");
 
     main_logger.info("initializing AccessPoint service.");
     ap.initialize();
@@ -43,6 +51,10 @@ setup() {
 
 void
 loop() {
+    if (attr_switch_test) {
+        attr_switch_test = false;
+        switch_service.test_switch();
+    }
 }
 
 void
@@ -59,6 +71,9 @@ register_http_server_handlers() {
     // testing switch functionality
     http_server.register_handler("/test_switch", HTTP_POST, [](AsyncWebServerRequest *request) {
         main_logger.info("testing switch functionality.");
+
+        attr_switch_test = true;
+
         request->send(204);
     });
 
