@@ -1,11 +1,9 @@
 #ifndef LOGGER_H
 #define LOGGER_H
 
-#define BAUD_RATE_115200 115200
-#include <HardwareSerial.h>
-
 typedef struct {
     char *source;
+    TimeService *timeService;
 } LoggerConfig;
 
 class ILogger {
@@ -21,10 +19,11 @@ public:
     virtual void error(LoggerConfig *conf, char *msg) = 0;
 
     static LoggerConfig*
-    setup(char *source) {
+    setup(char *source, TimeService *timeService) {
         const auto config = new LoggerConfig();
 
         config->source = source;
+        config->timeService = timeService;
 
         return config;
     }

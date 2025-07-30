@@ -15,7 +15,7 @@ isr_checkSerial() {
     f_checkSerial = true;
 }
 
-[[noreturn]] void
+[[maybe_unused]] void
 setup() {
     Serial.begin(115200);
 
@@ -33,7 +33,7 @@ setup() {
     serialISRTicker.attach_ms(200, isr_checkSerial);
 }
 
-void
+[[maybe_unused]] void
 loop() {
     static unsigned long lastPrint = 0;
 
