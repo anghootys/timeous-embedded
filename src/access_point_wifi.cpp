@@ -47,9 +47,9 @@ AccessPoint::get_wifi_credentials_as_string() {
     char *buf = (char *) malloc(buf_len);
     memset(buf, '\0', buf_len);
 
-    snprintf(buf, buf_len, "\nssid:\t%s\npassword:\t%s\nlocal ip:\t%s\ngateway:\t%s\nsubnet:\t\t%s", this->ssid,
-             this->password, WiFi.localIP().toString().c_str(), WiFi.gatewayIP().toString().c_str(),
-             WiFi.subnetMask().toString().c_str());
+    snprintf(buf, buf_len, "\nssid:\t\t%s\npassword:\t%s\nlocal ip:\t%s\ngateway:\t%s\nsubnet:\t\t%s", this->ssid,
+             this->password, local_ip.toString().c_str(), gateway.toString().c_str(),
+             subnet.toString().c_str());
 
     return buf;
 }
